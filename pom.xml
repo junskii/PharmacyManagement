@@ -12,7 +12,7 @@
     <artifactId>Pharmacy</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>Pharmacy</name>
-    <description>Pharmacy</description>
+    <description>Web-based pharmacy management system built with Spring Boot for managing medicines, sales transactions, and users with role-based access control.</description>
     <url/>
     <licenses>
         <license/>
