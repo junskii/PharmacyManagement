@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Sale Detail</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .container {
+            max-width: 800px;
+        }
+
+        .card-header {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .detail-item {
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <div th:replace="fragments/navbar :: navbar"></div>
+    <div class="container mt-5" style="padding-top: 60px;">
+        <div class="card">
+            <div class="card-header">
+                <h2 class="mb-0">Sale Details - Transaction ID: <span th:text="${sale.id}"></span></h2>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-6 detail-item">
+                        <strong>Date & Time:</strong> <span
+                            th:text="${#temporals.format(sale.saleDate, 'dd-MM-yyyy HH:mm:ss')}"></span>
+                    </div>
+                    <div class="col-md-6 detail-item">
+                        <strong>Cashier Name:</strong> <span th:text="${sale.cashierName}"></span>
+                    </div>
+                </div>
+
+                <h4 class="mt-4">Items Purchased:</h4>
+                <div class="table-responsive">
+                    <table class="table table-bordered table-striped">
+                        <thead>
+                            <tr>
+                                <th>Medicine Name</th>
+                                <th>Quantity</th>
+                                <th>Unit Price ($)</th>
+                                <th>Subtotal ($)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="item : ${sale.saleItems}">
+                                <td th:text="${item.medicineName}"></td>
+                                <td th:text="${item.quantity}"></td>
+                                <td th:text="${#numbers.formatCurrency(item.unitPrice)}"></td>
+                                <td th:text="${#numbers.formatCurrency(item.subtotal)}"></td>
+                            </tr>
+                            <tr th:if="${#lists.isEmpty(sale.saleItems)}">
+                                <td colspan="4" class="text-center">No items found for this sale.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="row mt-4">
+                    <div class="col-md-6 detail-item">
+                        <strong>Total Before Discount:</strong> <span
+                            th:text="${#numbers.formatCurrency(totalBeforeDiscount)}"></span>
+                    </div>
+                    <div class="col-md-6 detail-item">
+                        <strong>Total Amount:</strong> <span
+                            th:text="${#numbers.formatCurrency(sale.totalAmount)}"></span>
+                    </div>
+                    <div class="col-md-6 detail-item">
+                        <strong>Discount Applied:</strong>
+                        <div th:if="${sale.discountDetails != null && !sale.discountDetails.isEmpty()}">
+                            <th:block th:with="discounts=${#strings.arraySplit(sale.discountDetails, ',')}">
+                                <!-- Display Promo Discount first -->
+                                <p th:each="discount : ${discounts}"
+                                    th:if="${#strings.contains(discount.trim(), 'Promo')}" class="mb-0">
+                                    <span th:text="${discount.trim()}"></span>
+                                </p>
+                                <!-- Display Payment Method Discounts -->
+                                <p th:each="discount : ${discounts}"
+                                    th:if="${!#strings.contains(discount.trim(), 'Promo')}" class="mb-0">
+                                    <span th:text="${discount.trim()}"></span>
+                                </p>
+                            </th:block>
+                        </div>
+                        <span th:if="${sale.discountDetails == null || sale.discountDetails.isEmpty()}">None</span>
+                    </div>
+                    <div class="col-md-6 detail-item">
+                        <strong>Payment Method:</strong> <span th:text="${sale.paymentMethod}"></span>
+                    </div>
+                </div>
+
+                <div class="text-center mt-4">
+                    <a href="/sales-record" class="btn btn-secondary">Back to Sales Record</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.pharmacy.mapper.SaleMapper">
+
+    <resultMap id="saleResultMap" type="com.example.pharmacy.models.Sale">
+        <id property="id" column="id"/>
+        <result property="userId" column="user_id"/>
+        <result property="saleDate" column="sale_date"/>
+        <result property="totalAmount" column="total_amount"/>
+        <result property="discountDetails" column="discount_details"/>
+        <result property="paymentMethod" column="payment_method"/>
+        <result property="cashierName" column="cashierName"/>
+        <collection property="saleItems" ofType="com.example.pharmacy.models.SaleItem"
+                    select="com.example.pharmacy.mapper.SaleItemMapper.findBySaleId" column="id"/>
+    </resultMap>
+
+    <select id="findAll" resultMap="saleResultMap">
+        SELECT s.id, s.user_id, s.sale_date, s.total_amount, s.discount_details, s.payment_method, u.username as cashierName
+        FROM sales s
+        LEFT JOIN users u ON s.user_id = u.id
+    </select>
+
+    <select id="findSalesWithFilters" resultMap="saleResultMap">
+        SELECT s.id, s.user_id, s.sale_date, s.total_amount, s.discount_details, s.payment_method, u.username as cashierName
+        FROM sales s
+        LEFT JOIN users u ON s.user_id = u.id
+        <where>
+            <if test="startDate != null and endDate != null">
+                AND s.sale_date BETWEEN #{startDate} AND #{endDate}
+            </if>
+            <if test="cashierName != null and cashierName != ''">
+                AND u.username LIKE CONCAT('%', #{cashierName}, '%')
+            </if>
+            <if test="minAmount != null">
+                AND s.total_amount &gt;= #{minAmount}
+            </if>
+            <if test="maxAmount != null">
+                AND s.total_amount &lt;= #{maxAmount}
+            </if>
+            <if test="hasDiscount != null and hasDiscount == true">
+                AND s.discount_details IS NOT NULL
+            </if>
+            <if test="searchKeyword != null and searchKeyword != ''">
+                AND (
+                s.id LIKE CONCAT('%', #{searchKeyword}, '%') OR
+                u.username LIKE CONCAT('%', #{searchKeyword}, '%') OR
+                s.discount_details LIKE CONCAT('%', #{searchKeyword}, '%') OR
+                s.payment_method LIKE CONCAT('%', #{searchKeyword}, '%')
+                )
+            </if>
+        </where>
+        <if test="orderBy != null and orderBy != ''">
+            ORDER BY ${orderBy}
+            <if test="orderDirection != null and orderDirection != ''">
+                ${orderDirection}
+            </if>
+        </if>
+        LIMIT #{pageSize} OFFSET #{offset}
+    </select>
+
+    <select id="countSalesWithFilters" resultType="int">
+        SELECT COUNT(*)
+        FROM sales s
+        LEFT JOIN users u ON s.user_id = u.id
+        <where>
+            <if test="startDate != null and endDate != null">
+                AND s.sale_date BETWEEN #{startDate} AND #{endDate}
+            </if>
+            <if test="cashierName != null and cashierName != ''">
+                AND u.username LIKE CONCAT('%', #{cashierName}, '%')
+            </if>
+            <if test="minAmount != null">
+                AND s.total_amount &gt;= #{minAmount}
+            </if>
+            <if test="maxAmount != null">
+                AND s.total_amount &lt;= #{maxAmount}
+            </if>
+            <if test="hasDiscount != null and hasDiscount == true">
+                AND s.discount_details IS NOT NULL
+            </if>
+            <if test="searchKeyword != null and searchKeyword != ''">
+                AND (
+                s.id LIKE CONCAT('%', #{searchKeyword}, '%') OR
+                u.username LIKE CONCAT('%', #{searchKeyword}, '%') OR
+                s.discount_details LIKE CONCAT('%', #{searchKeyword}, '%') OR
+                s.payment_method LIKE CONCAT('%', #{searchKeyword}, '%')
+                )
+            </if>
+        </where>
+    </select>
+
+</mapper> 

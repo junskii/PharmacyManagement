@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Sales Transaction</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <style>
+        .medicine-card {
+            margin-bottom: 20px;
+            cursor: pointer;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            transition: all 0.2s ease-in-out;
+            height: 100%;
+            /* Ensure cards in a row have same height */
+            display: flex;
+            flex-direction: column;
+        }
+
+        .medicine-card:hover {
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            transform: translateY(-5px);
+        }
+
+        .medicine-card .card-body {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .medicine-card img {
+            max-height: 150px;
+            object-fit: contain;
+            width: 100%;
+            border-bottom: 1px solid #eee;
+            padding: 10px;
+        }
+
+        .cart-summary {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+        }
+
+        .search-filter-section {
+            margin-bottom: 20px;
+            padding: 20px;
+            background-color: #e9ecef;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+
+<body>
+    <div th:replace="fragments/navbar :: navbar"></div>
+    <div class="container-fluid mt-4" style="padding-top: 60px;">
+        <h2 class="mb-4">Sales Transaction - Cashier App</h2>
+        <div th:if="${errorMessage}" class="alert alert-danger" role="alert">
+            <p th:text="${errorMessage}"></p>
+        </div>
+        <div th:if="${param.success}" class="alert alert-success" role="alert">
+            <p>Transaksi berhasil diproses!</p>
+        </div>
+
+        <div class="row">
+            <!-- Medicine List Section -->
+            <div class="col-md-8">
+                <!-- Search and Filter -->
+                <div class="search-filter-section">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <input type="text" id="medicineSearch" class="form-control"
+                                placeholder="Search medicine by name...">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <select id="categoryFilter" class="form-select">
+                                <option value="">All Categories</option>
+                                <option th:each="category : ${medicineCategories}" th:value="${category}"
+                                    th:text="${category}"></option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <h3>Available Medicines</h3>
+                <div class="row" id="medicineList">
+                    <!-- Medicines will be loaded here -->
+                    <div class="col-md-4 col-sm-6 mb-4 medicine-item" th:each="medicine : ${allMedicines}"
+                        th:data-category="${medicine.category}" th:data-name="${medicine.name.toLowerCase()}"
+                        th:id="${'medicine-card-' + medicine.id}">
+                        <div class="card medicine-card">
+                            <img th:if="${medicine.image}" th:src="@{${medicine.image}}" class="card-img-top"
+                                alt="Medicine Image">
+                            <img th:unless="${medicine.image}" src="/images/default-medicine.png" class="card-img-top"
+                                alt="Default Image">
+                            <div class="card-body">
+                                <h5 class="card-title" th:text="${medicine.name}">Medicine Name</h5>
+                                <p class="card-text">Stock: <span th:text="${medicine.stock}"></span></p>
+                                <p class="card-text">Price: $<span
+                                        th:text="${#numbers.formatDecimal(medicine.price, 0, 'COMMA', 2, 'POINT')}">0.00</span>
+                                </p>
+                                <div class="mt-auto">
+                                    <input type="number" class="form-control mb-2 quantity-input" value="1" min="1"
+                                        th:max="${medicine.stock}" style="width: 100px;">
+                                    <button type="button" class="btn btn-primary btn-sm add-to-cart-btn"
+                                        th:data-id="${medicine.id}" th:data-name="${medicine.name}"
+                                        th:data-price="${medicine.price}" th:data-stock="${medicine.stock}">Add to
+                                        Cart</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cart Summary Section -->
+            <div class="col-md-4">
+                <div class="cart-summary sticky-top">
+                    <h3>Cart Summary</h3>
+                    <form th:action="@{/sales-transaction/process}" th:object="${sale}" method="post">
+                        <table class="table table-bordered mt-3">
+                            <thead>
+                                <tr>
+                                    <th>Item</th>
+                                    <th>Qty</th>
+                                    <th>Price</th>
+                                    <th>Subtotal</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="cartTableBody">
+                                <!-- Cart items will be added here by JavaScript -->
+                            </tbody>
+                        </table>
+
+                        <div class="mb-3">
+                            <label for="discountSelect" class="form-label">Discount:</label>
+                            <select id="discountSelect" class="form-select">
+                                <option value="0">No Discount (0%)</option>
+                                <option value="0.02">2%</option>
+                                <option value="0.05">5%</option>
+                                <option value="0.10">10%</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="paymentMethodSelect" class="form-label">Payment Method:</label>
+                            <select id="paymentMethodSelect" class="form-select" th:field="*{paymentMethod}">
+                                <option value="">-- Select Payment Method --</option>
+                                <option value="Cash">Cash</option>
+                                <option value="Debit">Debit</option>
+                                <option value="Alipay">Alipay</option>
+                                <option value="Apple Pay">Apple Pay</option>
+                                <option value="Credit Card">Credit Card</option>
+                            </select>
+                        </div>
+
+                        <h4 class="mt-4">Total Amount: $<span id="totalAmountDisplay">0.00</span></h4>
+                        <h4 class="mt-2">Total After Discount: $<span id="totalAfterDiscountDisplay">0.00</span></h4>
+
+                        <input type="hidden" id="totalAmountInput" th:field="*{totalAmount}">
+                        <div id="saleItemsInput"></div>
+                        <input type="hidden" id="discountDetailsInput" th:field="*{discountDetails}">
+                        <input type="hidden" id="frontendPromoPercentageInput" th:field="*{frontendPromoPercentage}">
+
+                        <button type="submit" class="btn btn-primary w-100 mt-3" id="processSaleBtn">Process
+                            Sale</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <a href="/dashboard" class="btn btn-secondary mt-3">Back to Dashboard</a>
+    </div>
+
+    <script th:inline="javascript">
+        /*<![CDATA[*/
+        $(document).ready(function () {
+            let cart = [];
+            let allMedicinesData = /*[[${allMedicines}]]*/[];
+
+            function calculateTotals() {
+                let subtotal = 0;
+                cart.forEach(item => {
+                    subtotal += item.quantity * item.unitPrice;
+                });
+
+                let discountPercentage = parseFloat($('#discountSelect').val());
+                let discountAmount = subtotal * discountPercentage;
+                let totalAfterDiscount = subtotal - discountAmount;
+
+                // Update the hidden input for totalAmount with the discounted value
+                $('#totalAmountInput').val(totalAfterDiscount.toFixed(2));
+
+                $('#totalAmountDisplay').text(subtotal.toFixed(2));
+                $('#totalAfterDiscountDisplay').text(totalAfterDiscount.toFixed(2));
+                $('#discountDetailsInput').val(discountPercentage > 0 ? (discountPercentage * 100) + '%' : '');
+                $('#frontendPromoPercentageInput').val(discountPercentage);
+            }
+
+            function updateCartTable() {
+                $('#cartTableBody').empty();
+                // Clear existing hidden inputs for saleItems to prevent duplicates
+                $('#saleItemsInput').empty();
+
+                cart.forEach((item, index) => {
+                    let itemSubtotal = item.quantity * item.unitPrice;
+                    $('#cartTableBody').append(
+                        `<tr>
+                            <td>${item.medicineName}</td>
+                            <td>${item.quantity}</td>
+                            <td>${item.unitPrice.toFixed(2)}</td>
+                            <td>${itemSubtotal.toFixed(2)}</td>
+                            <td>
+                                <button type="button" class="btn btn-danger btn-sm remove-item" data-index="${index}">Remove</button>
+                            </td>
+                         </tr>`
+                    );
+                    // Dynamically create hidden inputs for each sale item property
+                    $('#saleItemsInput').append(`
+                        <input type="hidden" name="saleItems[${index}].medicineId" value="${item.medicineId}">
+                        <input type="hidden" name="saleItems[${index}].quantity" value="${item.quantity}">
+                        <input type="hidden" name="saleItems[${index}].unitPrice" value="${item.unitPrice}">
+                        <input type="hidden" name="saleItems[${index}].subtotal" value="${itemSubtotal}">
+                    `);
+                });
+                // Remove the original hidden input as we are now dynamically adding individual inputs
+                // $('#saleItemsInput').val(JSON.stringify(cart));
+                calculateTotals();
+            }
+
+            // Add to Cart Button Click
+            $(document).on('click', '.add-to-cart-btn', function () {
+                let medicineId = $(this).data('id');
+                let medicineName = $(this).data('name');
+                let unitPrice = parseFloat($(this).data('price'));
+                let availableStock = parseInt($(this).data('stock'));
+                let quantityInput = $(this).closest('.medicine-card').find('.quantity-input');
+                let quantity = parseInt(quantityInput.val());
+
+                if (isNaN(quantity) || quantity <= 0) {
+                    alert('Please enter a valid quantity.');
+                    return;
+                }
+
+                if (quantity > availableStock) {
+                    alert('Not enough stock available for ' + medicineName + '. Available: ' + availableStock);
+                    return;
+                }
+
+                let existingItemIndex = cart.findIndex(item => item.medicineId == medicineId);
+                if (existingItemIndex > -1) {
+                    // Check if adding more quantity exceeds stock
+                    if (cart[existingItemIndex].quantity + quantity > availableStock) {
+                        alert('Adding ' + quantity + ' more to cart would exceed available stock for ' + medicineName + '. Available: ' + availableStock);
+                        return;
+                    }
+                    cart[existingItemIndex].quantity += quantity;
+                } else {
+                    cart.push({ medicineId: medicineId, medicineName: medicineName, quantity: quantity, unitPrice: unitPrice });
+                }
+                updateCartTable();
+                quantityInput.val(1); // Reset quantity input
+            });
+
+            // Remove Item from Cart
+            $(document).on('click', '.remove-item', function () {
+                let indexToRemove = $(this).data('index');
+                cart.splice(indexToRemove, 1);
+                updateCartTable();
+            });
+
+            // Discount Selection Change
+            $('#discountSelect').change(function () {
+                calculateTotals();
+            });
+
+            // Search and Filter Logic
+            $('#medicineSearch, #categoryFilter').on('keyup change', function () {
+                let searchTerm = $('#medicineSearch').val().toLowerCase();
+                let categoryFilter = $('#categoryFilter').val();
+
+                $('.medicine-item').each(function () {
+                    let medicineName = $(this).data('name');
+                    let medicineCategory = $(this).data('category');
+
+                    let nameMatch = medicineName.includes(searchTerm);
+                    let categoryMatch = (categoryFilter === '' || medicineCategory === categoryFilter);
+
+                    if (nameMatch && categoryMatch) {
+                        $(this).show();
+                    } else {
+                        $(this).hide();
+                    }
+                });
+            });
+
+            // Form Submission
+            $('form').submit(function (event) {
+                if (cart.length === 0) {
+                    alert('Please add at least one medicine to the cart.');
+                    event.preventDefault();
+                    return;
+                }
+                if ($('#paymentMethodSelect').val() === '') {
+                    alert('Please select a payment method.');
+                    event.preventDefault();
+                    return;
+                }
+            });
+
+            updateCartTable(); // Initial cart update on page load
+        });
+        /*]]>*/
+    </script>
+</body>
+
+</html>

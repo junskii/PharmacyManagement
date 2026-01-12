@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Sales Record</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .container {
+            max-width: 1200px;
+        }
+
+        .filter-form {
+            margin-bottom: 20px;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .table-responsive {
+            margin-top: 20px;
+        }
+
+        .pagination .page-item.active .page-link {
+            background-color: #007bff;
+            border-color: #007bff;
+        }
+    </style>
+</head>
+
+<body>
+    <div th:replace="fragments/navbar :: navbar"></div>
+    <div class="container mt-5" style="padding-top: 60px;">
+        <h2 class="mb-4">Sales Record</h2>
+
+        <!-- Filter and Search Form -->
+        <div class="filter-form">
+            <h4>Filter Sales</h4>
+            <form th:action="@{/sales-record}" method="get" class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label for="startDate" class="form-label">Start Date:</label>
+                    <input type="date" class="form-control" id="startDate" name="startDate" th:value="${startDate}">
+                </div>
+                <div class="col-md-3">
+                    <label for="endDate" class="form-label">End Date:</label>
+                    <input type="date" class="form-control" id="endDate" name="endDate" th:value="${endDate}">
+                </div>
+                <div class="col-md-3">
+                    <label for="cashierName" class="form-label">Cashier Name:</label>
+                    <select id="cashierName" name="cashierName" class="form-select">
+                        <option value="">All Cashiers</option>
+                        <option th:each="cashier : ${cashiers}" th:value="${cashier.username}"
+                            th:text="${cashier.username}" th:selected="${cashierName == cashier.username}"></option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="minAmount" class="form-label">Min Amount ($):</label>
+                    <input type="number" step="0.01" class="form-control" id="minAmount" name="minAmount"
+                        th:value="${minAmount}">
+                </div>
+                <div class="col-md-3">
+                    <label for="maxAmount" class="form-label">Max Amount ($):</label>
+                    <input type="number" step="0.01" class="form-control" id="maxAmount" name="maxAmount"
+                        th:value="${maxAmount}">
+                </div>
+                <div class="col-md-3 d-flex align-items-center">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="hasDiscount" name="hasDiscount"
+                            th:checked="${hasDiscount}">
+                        <label class="form-check-label" for="hasDiscount">With Discount</label>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <label for="searchKeyword" class="form-label">Search Keyword:</label>
+                    <input type="text" class="form-control" id="searchKeyword" name="searchKeyword"
+                        placeholder="Transaction ID, Cashier, Discount, Payment Method" th:value="${searchKeyword}">
+                </div>
+                <div class="col-md-2">
+                    <label for="orderBy" class="form-label">Sort By:</label>
+                    <select id="orderBy" name="orderBy" class="form-select">
+                        <option value="sale_date" th:selected="${orderBy == 'sale_date'}">Date & Time</option>
+                        <option value="total_amount" th:selected="${orderBy == 'total_amount'}">Total Amount</option>
+                        <option value="u.username" th:selected="${orderBy == 'u.username'}">Cashier Name</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="orderDirection" class="form-label">Order:</label>
+                    <select id="orderDirection" name="orderDirection" class="form-select">
+                        <option value="desc" th:selected="${orderDirection == 'desc'}">Descending</option>
+                        <option value="asc" th:selected="${orderDirection == 'asc'}">Ascending</option>
+                    </select>
+                </div>
+                <div class="col-md-2 d-grid">
+                    <button type="submit" class="btn btn-primary">Apply Filters</button>
+                </div>
+                <div class="col-md-2 d-grid">
+                    <a th:href="@{/sales-record}" class="btn btn-secondary">Reset Filters</a>
+                </div>
+            </form>
+            <div th:if="${dateError}" class="alert alert-danger mt-3" role="alert">
+                <span th:text="${dateError}"></span>
+            </div>
+        </div>
+
+        <!-- Sales Table -->
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>Transaction ID</th>
+                        <th>Date & Time</th>
+                        <th>Cashier Name</th>
+                        <th>Total Amount ($)</th>
+                        <th>Discount Applied</th>
+                        <th>Payment Method</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="sale : ${sales}">
+                        <td th:text="${sale.id}"></td>
+                        <td th:text="${#temporals.format(sale.saleDate, 'dd-MM-yyyy HH:mm:ss')}"></td>
+                        <td th:text="${sale.cashierName}"></td>
+                        <td th:text="|$${#numbers.formatDecimal(sale.totalAmount, 1, 'COMMA', 2, 'POINT')}|"></td>
+                        <td>
+                            <div th:if="${sale.discountDetails != null && !sale.discountDetails.isEmpty()}">
+                                <th:block th:with="discounts=${#strings.arraySplit(sale.discountDetails, ',')}">
+                                    <!-- Debugging: Display each split discount string on a new line -->
+                                    <p th:each="discount : ${discounts}" class="mb-0">
+                                        <span th:text="${discount.trim()}"></span>
+                                    </p>
+                                </th:block>
+                            </div>
+                            <span th:if="${sale.discountDetails == null || sale.discountDetails.isEmpty()}">No
+                                Discount</span>
+                        </td>
+                        <td th:text="${sale.paymentMethod}"></td>
+                        <td>
+                            <a th:href="@{/sales-record/{id}(id=${sale.id})}" class="btn btn-info btn-sm">View
+                                Details</a>
+                        </td>
+                    </tr>
+                    <tr th:if="${#lists.isEmpty(sales)}">
+                        <td colspan="7" class="text-center">No sales records found.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        <nav aria-label="Page navigation">
+            <ul class="pagination justify-content-center">
+                <li class="page-item" th:classappend="${currentPage == 1 ? 'disabled' : ''}">
+                    <a class="page-link"
+                        th:href="@{/sales-record(page=${currentPage - 1},
+                        startDate=${startDate}, endDate=${endDate}, cashierName=${cashierName},
+                        minAmount=${minAmount}, maxAmount=${maxAmount}, hasDiscount=${hasDiscount},
+                        searchKeyword=${searchKeyword}, orderBy=${orderBy}, orderDirection=${orderDirection})}">Previous</a>
+                </li>
+                <li class="page-item" th:each="i : ${#numbers.sequence(1, totalPages)}"
+                    th:classappend="${i == currentPage ? 'active' : ''}">
+                    <a class="page-link" th:href="@{/sales-record(page=${i},
+                        startDate=${startDate}, endDate=${endDate}, cashierName=${cashierName},
+                        minAmount=${minAmount}, maxAmount=${maxAmount}, hasDiscount=${hasDiscount},
+                        searchKeyword=${searchKeyword}, orderBy=${orderBy}, orderDirection=${orderDirection})}">
+                        <span th:text="${i}"></span>
+                    </a>
+                </li>
+                <li class="page-item" th:classappend="${currentPage == totalPages ? 'disabled' : ''}">
+                    <a class="page-link"
+                        th:href="@{/sales-record(page=${currentPage + 1},
+                        startDate=${startDate}, endDate=${endDate}, cashierName=${cashierName},
+                        minAmount=${minAmount}, maxAmount=${maxAmount}, hasDiscount=${hasDiscount},
+                        searchKeyword=${searchKeyword}, orderBy=${orderBy}, orderDirection=${orderDirection})}">Next</a>
+                </li>
+            </ul>
+        </nav>
+
+        <div class="text-center mt-3">
+            <a href="/dashboard" class="btn btn-secondary">Back to Dashboard</a>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+
+</html>
